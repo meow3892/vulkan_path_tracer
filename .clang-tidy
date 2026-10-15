@@ -1,0 +1,6 @@
+Checks:
+    -*,
+    readability-identifier-naming,
+
+CheckOptions:
+    readability-identifier-naming.PrivateMemberSuffix: _
