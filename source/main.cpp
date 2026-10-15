@@ -15,6 +15,9 @@ SDL_AppResult SDL_AppInit(void **appstate, int argc, char **argv)
 
   *appstate = new App();
 
+  std::cout << static_cast<App *>(*appstate)->gpu_.getPhysicalDevice().getProperties().deviceName.data() << '\n';
+  std::cout << "Graphics queue index: " << static_cast<App *>(*appstate)->gpu_.getGraphicsQueueIndex() << '\n';
+
   return SDL_APP_CONTINUE;
 }
 
