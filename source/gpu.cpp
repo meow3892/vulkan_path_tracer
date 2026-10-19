@@ -15,6 +15,7 @@ Gpu::Gpu()
   createInstance();
   selectPhysicalDevice();
   createDeviceAndQueues();
+  createAllocator();
 }
 
 vk::PhysicalDevice Gpu::getPhysicalDevice() const
@@ -25,6 +26,11 @@ vk::PhysicalDevice Gpu::getPhysicalDevice() const
 uint32_t Gpu::getGraphicsQueueIndex() const
 {
   return graphicsQueueIndex_;
+}
+
+const vma::raii::Allocator &Gpu::getAllocator() const
+{
+  return allocator_;
 }
 
 void Gpu::createInstance()
@@ -129,4 +135,14 @@ void Gpu::createDeviceAndQueues()
   };
 
   device_ = physicalDevice_.createDevice(deviceCreateInfo);
+}
+
+void Gpu::createAllocator()
+{
+  vma::AllocatorCreateInfo allocatorCreateInfo{
+      .physicalDevice = *physicalDevice_,
+      .vulkanApiVersion = vk::ApiVersion14,
+  };
+
+  allocator_ = vma::raii::Allocator(instance_, device_, allocatorCreateInfo);
 }
