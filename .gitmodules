@@ -7,3 +7,6 @@
 [submodule "vendor/glm"]
 	path = vendor/glm
 	url = https://github.com/g-truc/glm.git
+[submodule "vendor/fastgltf"]
+	path = vendor/fastgltf
+	url = https://github.com/spnda/fastgltf.git
