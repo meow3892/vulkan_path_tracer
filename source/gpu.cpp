@@ -151,6 +151,8 @@ void Gpu::createDeviceAndQueues()
 
   vk::PhysicalDeviceVulkan12Features vulkan12Features{
       .pNext = &accelerationStructureFeatures,
+      .descriptorBindingSampledImageUpdateAfterBind = true,
+      .descriptorBindingPartiallyBound = true,
       .bufferDeviceAddress = true,
   };
 

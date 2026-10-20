@@ -55,10 +55,14 @@ private:
 
   const Gpu &gpu_;
   vk::raii::CommandPool commandPool_;
+  vk::raii::DescriptorSetLayout descriptorSetLayout_;
+  vk::raii::DescriptorPool descriptorPool_;
+  vk::DescriptorSet descriptorSet_;
   vma::raii::Buffer materialBuffer_;
   uint32_t materialCount_{0};
   vma::raii::Buffer primitiveBuffer_;
   uint32_t primitiveCount_{0};
   std::vector<Mesh> meshes_;
   std::vector<Texture2D> texture2Ds_;
+  vk::raii::Sampler sampler_;
 };

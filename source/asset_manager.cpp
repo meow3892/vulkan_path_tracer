@@ -8,6 +8,13 @@
 
 static constexpr uint32_t MAX_MATERIALS = 1024;
 static constexpr uint32_t MAX_PRIMITIVES = 1024;
+static constexpr uint32_t MAX_TEXTURE_2DS = 1024;
+
+static constexpr std::array<vk::DescriptorSetLayoutBinding, 3> BINDINGS{{
+    {.binding = 0, .descriptorType = vk::DescriptorType::eStorageBuffer, .descriptorCount = 1, .stageFlags = vk::ShaderStageFlagBits::eAll},
+    {.binding = 1, .descriptorType = vk::DescriptorType::eStorageBuffer, .descriptorCount = 1, .stageFlags = vk::ShaderStageFlagBits::eAll},
+    {.binding = 2, .descriptorType = vk::DescriptorType::eCombinedImageSampler, .descriptorCount = MAX_TEXTURE_2DS, .stageFlags = vk::ShaderStageFlagBits::eAll},
+}};
 
 static vma::raii::Buffer createMaterialBuffer(const Gpu &gpu)
 {
@@ -49,11 +56,107 @@ static vk::raii::CommandPool createCommandPool(const Gpu &gpu)
   return gpu.getDevice().createCommandPool(commandPoolCreateInfo);
 }
 
+static vk::raii::Sampler createSampler(const Gpu &gpu)
+{
+  vk::SamplerCreateInfo samplerCreateInfo{
+      .magFilter = vk::Filter::eLinear,
+      .minFilter = vk::Filter::eLinear,
+      .mipmapMode = vk::SamplerMipmapMode::eLinear,
+      .addressModeU = vk::SamplerAddressMode::eRepeat,
+      .addressModeV = vk::SamplerAddressMode::eRepeat,
+      .addressModeW = vk::SamplerAddressMode::eRepeat,
+      .maxLod = vk::LodClampNone,
+  };
+
+  return gpu.getDevice().createSampler(samplerCreateInfo);
+}
+
+static vk::raii::DescriptorSetLayout createDescriptorSetLayout(const Gpu &gpu)
+{
+  std::array<vk::DescriptorBindingFlags, BINDINGS.size()> bindingFlags{
+      vk::DescriptorBindingFlags{},
+      vk::DescriptorBindingFlags{},
+      vk::DescriptorBindingFlagBits::ePartiallyBound | vk::DescriptorBindingFlagBits::eUpdateAfterBind,
+  };
+
+  vk::DescriptorSetLayoutBindingFlagsCreateInfo bindingFlagsCreateInfo{
+      .bindingCount = static_cast<uint32_t>(bindingFlags.size()),
+      .pBindingFlags = bindingFlags.data(),
+  };
+
+  vk::DescriptorSetLayoutCreateInfo descriptorSetLayoutCreateInfo{
+      .pNext = &bindingFlagsCreateInfo,
+      .flags = vk::DescriptorSetLayoutCreateFlagBits::eUpdateAfterBindPool,
+      .bindingCount = static_cast<uint32_t>(BINDINGS.size()),
+      .pBindings = BINDINGS.data(),
+  };
+
+  return gpu.getDevice().createDescriptorSetLayout(descriptorSetLayoutCreateInfo);
+}
+
+static vk::raii::DescriptorPool createDescriptorPool(const Gpu &gpu)
+{
+  std::vector<vk::DescriptorPoolSize> poolSizes;
+  for (const auto &binding : BINDINGS)
+  {
+    poolSizes.push_back({
+        .type = binding.descriptorType,
+        .descriptorCount = binding.descriptorCount,
+    });
+  }
+
+  vk::DescriptorPoolCreateInfo descriptorPoolCreateInfo{
+      .flags = vk::DescriptorPoolCreateFlagBits::eUpdateAfterBind,
+      .maxSets = 1,
+      .poolSizeCount = static_cast<uint32_t>(poolSizes.size()),
+      .pPoolSizes = poolSizes.data(),
+  };
+
+  return gpu.getDevice().createDescriptorPool(descriptorPoolCreateInfo);
+}
+
 AssetManager::AssetManager(const Gpu &gpu) : gpu_(gpu),
                                              commandPool_(createCommandPool(gpu)),
+                                             descriptorSetLayout_(createDescriptorSetLayout(gpu)),
+                                             descriptorPool_(createDescriptorPool(gpu)),
                                              materialBuffer_(createMaterialBuffer(gpu)),
-                                             primitiveBuffer_(createPrimitiveBuffer(gpu))
+                                             primitiveBuffer_(createPrimitiveBuffer(gpu)),
+                                             sampler_(createSampler(gpu))
 {
+  vk::DescriptorSetAllocateInfo descriptorSetAllocateInfo{
+      .descriptorPool = *descriptorPool_,
+      .descriptorSetCount = 1,
+      .pSetLayouts = &*descriptorSetLayout_,
+  };
+  descriptorSet_ = (*gpu.getDevice()).allocateDescriptorSets(descriptorSetAllocateInfo).front();
+
+  vk::DescriptorBufferInfo materialBufferInfo{
+      .buffer = *materialBuffer_,
+      .range = vk::WholeSize,
+  };
+  vk::DescriptorBufferInfo primitiveBufferInfo{
+      .buffer = *primitiveBuffer_,
+      .range = vk::WholeSize,
+  };
+
+  std::array writes{
+      vk::WriteDescriptorSet{
+          .dstSet = descriptorSet_,
+          .dstBinding = 0,
+          .descriptorCount = 1,
+          .descriptorType = vk::DescriptorType::eStorageBuffer,
+          .pBufferInfo = &materialBufferInfo,
+      },
+      vk::WriteDescriptorSet{
+          .dstSet = descriptorSet_,
+          .dstBinding = 1,
+          .descriptorCount = 1,
+          .descriptorType = vk::DescriptorType::eStorageBuffer,
+          .pBufferInfo = &primitiveBufferInfo,
+      },
+  };
+  gpu.getDevice().updateDescriptorSets(writes, nullptr);
+
   const std::array<uint8_t, 4> white{255, 255, 255, 255};
   const std::array<uint8_t, 4> flatNormal{128, 128, 255, 255};
   uploadTexture2D(vk::Format::eR8G8B8A8Unorm, {1, 1}, white.data());
@@ -62,6 +165,11 @@ AssetManager::AssetManager(const Gpu &gpu) : gpu_(gpu),
 
 void AssetManager::uploadTexture2D(vk::Format format, vk::Extent2D extent, vk::ArrayProxy<const void *const> mipLevels)
 {
+  if (texture2Ds_.size() >= MAX_TEXTURE_2DS)
+  {
+    throw std::runtime_error("Texture2D array is full");
+  }
+
   auto &device = gpu_.getDevice();
 
   vk::ImageCreateInfo imageCreateInfo{
@@ -119,6 +227,21 @@ void AssetManager::uploadTexture2D(vk::Format format, vk::Extent2D extent, vk::A
       .subresourceRange = subresourceRange,
   };
   auto imageView = device.createImageView(imageViewCreateInfo);
+
+  vk::DescriptorImageInfo imageInfo{
+      .sampler = *sampler_,
+      .imageView = *imageView,
+      .imageLayout = vk::ImageLayout::eShaderReadOnlyOptimal,
+  };
+  vk::WriteDescriptorSet write{
+      .dstSet = descriptorSet_,
+      .dstBinding = 2,
+      .dstArrayElement = static_cast<uint32_t>(texture2Ds_.size()),
+      .descriptorCount = 1,
+      .descriptorType = vk::DescriptorType::eCombinedImageSampler,
+      .pImageInfo = &imageInfo,
+  };
+  device.updateDescriptorSets(write, nullptr);
 
   texture2Ds_.push_back(Texture2D{
       .image = std::move(image),
