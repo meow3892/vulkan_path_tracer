@@ -28,6 +28,11 @@ uint32_t Gpu::getGraphicsQueueIndex() const
   return graphicsQueueIndex_;
 }
 
+vk::Queue Gpu::getGraphicsQueue() const
+{
+  return *graphicsQueue_;
+}
+
 const vk::raii::Device &Gpu::getDevice() const
 {
   return device_;
@@ -157,6 +162,7 @@ void Gpu::createDeviceAndQueues()
   };
 
   device_ = physicalDevice_.createDevice(deviceCreateInfo);
+  graphicsQueue_ = device_.getQueue(graphicsQueueIndex_, 0);
 }
 
 void Gpu::createAllocator()
