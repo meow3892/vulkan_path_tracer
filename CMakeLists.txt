@@ -8,6 +8,8 @@ find_package(Vulkan REQUIRED)
 
 add_subdirectory("vendor/SDL" EXCLUDE_FROM_ALL)
 add_subdirectory("vendor/VulkanMemoryAllocator-Hpp" EXCLUDE_FROM_ALL)
+add_subdirectory("vendor/glm" EXCLUDE_FROM_ALL)
+add_subdirectory("vendor/fastgltf" EXCLUDE_FROM_ALL)
 
 add_executable(vulkan_path_tracer)
 
@@ -17,11 +19,14 @@ PRIVATE
   Vulkan::Vulkan
   GPUOpen::VulkanMemoryAllocator
   VulkanMemoryAllocator-Hpp::VulkanMemoryAllocator-Hpp
+  glm::glm
+  fastgltf::fastgltf
 )
 
 target_include_directories(vulkan_path_tracer
 PRIVATE
   "source/"
+  "shader/"
 )
 
 target_sources(vulkan_path_tracer
@@ -30,6 +35,7 @@ PRIVATE
   "source/app.cpp"
   "source/gpu.cpp"
   "source/vma.cpp"
+  "source/asset_manager.cpp"
 )
 
 target_compile_definitions(vulkan_path_tracer

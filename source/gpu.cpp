@@ -129,9 +129,21 @@ void Gpu::createDeviceAndQueues()
       },
   };
 
+  vk::PhysicalDeviceVulkan12Features vulkan12Features{
+      .bufferDeviceAddress = true,
+  };
+
+  std::array<const char *, 2> extensions{
+      vk::KHRAccelerationStructureExtensionName,
+      vk::KHRDeferredHostOperationsExtensionName,
+  };
+
   vk::DeviceCreateInfo deviceCreateInfo{
+      .pNext = &vulkan12Features,
       .queueCreateInfoCount = static_cast<uint32_t>(deviceQueueCreateInfos.size()),
       .pQueueCreateInfos = deviceQueueCreateInfos.data(),
+      .enabledExtensionCount = extensions.size(),
+      .ppEnabledExtensionNames = extensions.data(),
   };
 
   device_ = physicalDevice_.createDevice(deviceCreateInfo);
@@ -140,6 +152,7 @@ void Gpu::createDeviceAndQueues()
 void Gpu::createAllocator()
 {
   vma::AllocatorCreateInfo allocatorCreateInfo{
+      .flags = vma::AllocatorCreateFlagBits::eBufferDeviceAddress,
       .physicalDevice = *physicalDevice_,
       .vulkanApiVersion = vk::ApiVersion14,
   };

@@ -14,9 +14,17 @@ SDL_AppResult SDL_AppInit(void **appstate, int argc, char **argv)
   }
 
   *appstate = new App();
+  auto app = static_cast<App *>(*appstate);
 
-  std::cout << static_cast<App *>(*appstate)->gpu_.getPhysicalDevice().getProperties().deviceName.data() << '\n';
-  std::cout << "Graphics queue index: " << static_cast<App *>(*appstate)->gpu_.getGraphicsQueueIndex() << '\n';
+  try
+  {
+    app->assetManager.uploadGltf("asset/cornell_box.gltf");
+  }
+  catch (const std::exception &exception)
+  {
+    std::cerr << exception.what() << '\n';
+    return SDL_APP_FAILURE;
+  }
 
   return SDL_APP_CONTINUE;
 }
