@@ -39,6 +39,7 @@ private:
     vma::raii::Buffer texcoordBuffer;
 
     std::vector<Primitive> primitives;
+    uint32_t firstPrimitive;
 
     vma::raii::Buffer blasBuffer{nullptr};
     vk::raii::AccelerationStructureKHR blas{nullptr};
@@ -56,6 +57,8 @@ private:
   vk::raii::CommandPool commandPool_;
   vma::raii::Buffer materialBuffer_;
   uint32_t materialCount_{0};
+  vma::raii::Buffer primitiveBuffer_;
+  uint32_t primitiveCount_{0};
   std::vector<Mesh> meshes_;
   std::vector<Texture2D> texture2Ds_;
   uint32_t textureCount_{2};

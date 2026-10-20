@@ -7,11 +7,27 @@
 #include <glm/gtc/type_ptr.hpp>
 
 static constexpr uint32_t MAX_MATERIALS = 1024;
+static constexpr uint32_t MAX_PRIMITIVES = 1024;
 
 static vma::raii::Buffer createMaterialBuffer(const Gpu &gpu)
 {
   vk::BufferCreateInfo bufferCreateInfo{
       .size = sizeof(Shader::Material) * MAX_MATERIALS,
+      .usage = vk::BufferUsageFlagBits::eStorageBuffer,
+  };
+
+  vma::AllocationCreateInfo allocationCreateInfo{
+      .flags = vma::AllocationCreateFlagBits::eHostAccessSequentialWrite,
+      .usage = vma::MemoryUsage::eAutoPreferDevice,
+  };
+
+  return gpu.getAllocator().createBuffer(bufferCreateInfo, allocationCreateInfo);
+}
+
+static vma::raii::Buffer createPrimitiveBuffer(const Gpu &gpu)
+{
+  vk::BufferCreateInfo bufferCreateInfo{
+      .size = sizeof(Shader::Primitive) * MAX_PRIMITIVES,
       .usage = vk::BufferUsageFlagBits::eStorageBuffer,
   };
 
@@ -33,7 +49,10 @@ static vk::raii::CommandPool createCommandPool(const Gpu &gpu)
   return gpu.getDevice().createCommandPool(commandPoolCreateInfo);
 }
 
-AssetManager::AssetManager(const Gpu &gpu) : gpu_(gpu), commandPool_(createCommandPool(gpu)), materialBuffer_(createMaterialBuffer(gpu))
+AssetManager::AssetManager(const Gpu &gpu) : gpu_(gpu),
+                                             commandPool_(createCommandPool(gpu)),
+                                             materialBuffer_(createMaterialBuffer(gpu)),
+                                             primitiveBuffer_(createPrimitiveBuffer(gpu))
 {
   const std::array<uint8_t, 4> white{255, 255, 255, 255};
   const std::array<uint8_t, 4> flatNormal{128, 128, 255, 255};
@@ -144,6 +163,11 @@ MeshHandle AssetManager::uploadGltf(const std::filesystem::path &path)
     throw std::runtime_error(path.string() + " material buffer is full");
   }
 
+  if (primitiveCount_ + mesh.primitives.size() > MAX_PRIMITIVES)
+  {
+    throw std::runtime_error(path.string() + " primitive buffer is full");
+  }
+
   const uint32_t materialBase = materialCount_;
   const uint32_t textureBase = textureCount_;
 
@@ -240,6 +264,30 @@ MeshHandle AssetManager::uploadGltf(const std::filesystem::path &path)
     }
     materialBuffer_.getAllocation().unmap();
 
+    // fill primitive buffer
+    auto &device = gpu_.getDevice();
+    uint64_t indexAddress = device.getBufferAddress({.buffer = *indexBuffer});
+    uint64_t positionAddress = device.getBufferAddress({.buffer = *positionBuffer});
+    uint64_t normalAddress = device.getBufferAddress({.buffer = *normalBuffer});
+    uint64_t tangentAddress = device.getBufferAddress({.buffer = *tangentBuffer});
+    uint64_t texcoordAddress = device.getBufferAddress({.buffer = *texcoordBuffer});
+
+    uint32_t primitiveBase = primitiveCount_;
+    auto *shaderPrimitives = static_cast<Shader::Primitive *>(primitiveBuffer_.getAllocation().map());
+    for (const auto &primitive : primitives)
+    {
+      shaderPrimitives[primitiveCount_] = {
+          .indexAddress = indexAddress + sizeof(uint32_t) * primitive.firstIndex,
+          .positionAddress = positionAddress + sizeof(glm::vec3) * primitive.vertexOffset,
+          .normalAddress = normalAddress + sizeof(glm::vec3) * primitive.vertexOffset,
+          .tangentAddress = tangentAddress + sizeof(glm::vec4) * primitive.vertexOffset,
+          .texcoordAddress = texcoordAddress + sizeof(glm::vec2) * primitive.vertexOffset,
+          .materialIndex = primitive.materialIndex,
+      };
+      ++primitiveCount_;
+    }
+    primitiveBuffer_.getAllocation().unmap();
+
     textureCount_ += asset->textures.size();
 
     meshes_.push_back({
@@ -249,6 +297,7 @@ MeshHandle AssetManager::uploadGltf(const std::filesystem::path &path)
         .tangentBuffer = std::move(tangentBuffer),
         .texcoordBuffer = std::move(texcoordBuffer),
         .primitives = std::move(primitives),
+        .firstPrimitive = primitiveBase,
     });
 
     return MeshHandle{static_cast<uint32_t>(meshes_.size() - 1)};

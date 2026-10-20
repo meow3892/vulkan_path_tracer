@@ -23,4 +23,14 @@ struct Material
   uint32_t emissiveTextureIndex;
   float alphaCutoff;
 };
+
+struct Primitive
+{
+  uint64_t indexAddress;
+  uint64_t positionAddress;
+  uint64_t normalAddress;
+  uint64_t tangentAddress;
+  uint64_t texcoordAddress;
+  uint32_t materialIndex;
+};
 } // namespace Shader
