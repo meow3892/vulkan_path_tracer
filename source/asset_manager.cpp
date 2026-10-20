@@ -169,7 +169,7 @@ MeshHandle AssetManager::uploadGltf(const std::filesystem::path &path)
   }
 
   const uint32_t materialBase = materialCount_;
-  const uint32_t textureBase = textureCount_;
+  const uint32_t textureBase = static_cast<uint32_t>(texture2Ds_.size());
 
   try
   {
@@ -287,8 +287,6 @@ MeshHandle AssetManager::uploadGltf(const std::filesystem::path &path)
       ++primitiveCount_;
     }
     primitiveBuffer_.getAllocation().unmap();
-
-    textureCount_ += asset->textures.size();
 
     meshes_.push_back({
         .indexBuffer = std::move(indexBuffer),

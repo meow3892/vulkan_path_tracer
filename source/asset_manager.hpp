@@ -61,5 +61,4 @@ private:
   uint32_t primitiveCount_{0};
   std::vector<Mesh> meshes_;
   std::vector<Texture2D> texture2Ds_;
-  uint32_t textureCount_{2};
 };
