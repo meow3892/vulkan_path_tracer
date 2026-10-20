@@ -19,6 +19,7 @@ SDL_AppResult SDL_AppInit(void **appstate, int argc, char **argv)
   try
   {
     app->assetManager.uploadGltf("asset/cornell_box.gltf");
+    app->assetManager.buildBlases();
   }
   catch (const std::exception &exception)
   {

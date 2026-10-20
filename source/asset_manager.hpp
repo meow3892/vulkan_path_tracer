@@ -18,6 +18,8 @@ public:
 
   MeshHandle uploadGltf(const std::filesystem::path &path);
 
+  void buildBlases();
+
 private:
   struct Primitive
   {
@@ -37,6 +39,9 @@ private:
     vma::raii::Buffer texcoordBuffer;
 
     std::vector<Primitive> primitives;
+
+    vma::raii::Buffer blasBuffer{nullptr};
+    vk::raii::AccelerationStructureKHR blas{nullptr};
   };
 
   struct Texture2D
@@ -48,6 +53,7 @@ private:
   void uploadTexture2D(vk::Format format, vk::Extent2D extent, vk::ArrayProxy<const void *const> mipLevels);
 
   const Gpu &gpu_;
+  vk::raii::CommandPool commandPool_;
   vma::raii::Buffer materialBuffer_;
   uint32_t materialCount_{0};
   std::vector<Mesh> meshes_;

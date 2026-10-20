@@ -16,6 +16,7 @@ Gpu::Gpu()
   selectPhysicalDevice();
   createDeviceAndQueues();
   createAllocator();
+  queryProperties();
 }
 
 vk::PhysicalDevice Gpu::getPhysicalDevice() const
@@ -41,6 +42,11 @@ const vk::raii::Device &Gpu::getDevice() const
 const vma::raii::Allocator &Gpu::getAllocator() const
 {
   return allocator_;
+}
+
+vk::PhysicalDeviceAccelerationStructurePropertiesKHR Gpu::getAccelerationStructureProperties() const
+{
+  return accelerationStructureProperties_;
 }
 
 void Gpu::createInstance()
@@ -139,7 +145,12 @@ void Gpu::createDeviceAndQueues()
       },
   };
 
+  vk::PhysicalDeviceAccelerationStructureFeaturesKHR accelerationStructureFeatures{
+      .accelerationStructure = true,
+  };
+
   vk::PhysicalDeviceVulkan12Features vulkan12Features{
+      .pNext = &accelerationStructureFeatures,
       .bufferDeviceAddress = true,
   };
 
@@ -174,4 +185,9 @@ void Gpu::createAllocator()
   };
 
   allocator_ = vma::raii::Allocator(instance_, device_, allocatorCreateInfo);
+}
+
+void Gpu::queryProperties()
+{
+  accelerationStructureProperties_ = physicalDevice_.getProperties2<vk::PhysicalDeviceProperties2, vk::PhysicalDeviceAccelerationStructurePropertiesKHR>().get<vk::PhysicalDeviceAccelerationStructurePropertiesKHR>();
 }

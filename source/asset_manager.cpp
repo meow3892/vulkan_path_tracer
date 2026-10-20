@@ -23,7 +23,17 @@ static vma::raii::Buffer createMaterialBuffer(const Gpu &gpu)
   return gpu.getAllocator().createBuffer(bufferCreateInfo, allocationCreateInfo);
 }
 
-AssetManager::AssetManager(const Gpu &gpu) : gpu_(gpu), materialBuffer_(createMaterialBuffer(gpu))
+static vk::raii::CommandPool createCommandPool(const Gpu &gpu)
+{
+  vk::CommandPoolCreateInfo commandPoolCreateInfo{
+      .flags = vk::CommandPoolCreateFlagBits::eTransient,
+      .queueFamilyIndex = gpu.getGraphicsQueueIndex(),
+  };
+
+  return gpu.getDevice().createCommandPool(commandPoolCreateInfo);
+}
+
+AssetManager::AssetManager(const Gpu &gpu) : gpu_(gpu), commandPool_(createCommandPool(gpu)), materialBuffer_(createMaterialBuffer(gpu))
 {
   const std::array<uint8_t, 4> white{255, 255, 255, 255};
   const std::array<uint8_t, 4> flatNormal{128, 128, 255, 255};
@@ -248,4 +258,125 @@ MeshHandle AssetManager::uploadGltf(const std::filesystem::path &path)
     // rethrow missing attribute or optional::value() with path
     throw std::runtime_error(path.string() + ' ' + exception.what());
   }
+}
+
+void AssetManager::buildBlases()
+{
+  auto &device = gpu_.getDevice();
+  auto &allocator = gpu_.getAllocator();
+  auto scratchAlignment = gpu_.getAccelerationStructureProperties().minAccelerationStructureScratchOffsetAlignment;
+
+  vma::AllocationCreateInfo allocationCreateInfo{
+      .usage = vma::MemoryUsage::eAutoPreferDevice,
+  };
+
+  vk::CommandBufferAllocateInfo commandBufferAllocateInfo{
+      .commandPool = *commandPool_,
+      .level = vk::CommandBufferLevel::ePrimary,
+      .commandBufferCount = 1,
+  };
+  auto commandBuffer = std::move(device.allocateCommandBuffers(commandBufferAllocateInfo).front());
+
+  vk::CommandBufferBeginInfo commandBufferBeginInfo{
+      .flags = vk::CommandBufferUsageFlagBits::eOneTimeSubmit,
+  };
+  commandBuffer.begin(commandBufferBeginInfo);
+
+  std::vector<vma::raii::Buffer> scratchBuffers;
+
+  for (auto &mesh : meshes_)
+  {
+    if (*mesh.blas)
+    {
+      continue;
+    }
+
+    vk::BufferDeviceAddressInfo indexBufferAddressInfo{
+        .buffer = *mesh.indexBuffer,
+    };
+    const auto indexBufferAddress = device.getBufferAddress(indexBufferAddressInfo);
+
+    vk::BufferDeviceAddressInfo positionBufferAddressInfo{
+        .buffer = *mesh.positionBuffer,
+    };
+    const auto positionBufferAddress = device.getBufferAddress(positionBufferAddressInfo);
+
+    std::vector<vk::AccelerationStructureGeometryKHR> geometries;
+    std::vector<vk::AccelerationStructureBuildRangeInfoKHR> buildRangeInfos;
+    std::vector<uint32_t> triangleCounts;
+
+    for (const auto &primitive : mesh.primitives)
+    {
+      const auto triangleCount = primitive.indexCount / 3;
+
+      vk::AccelerationStructureGeometryTrianglesDataKHR triangles{
+          .vertexFormat = vk::Format::eR32G32B32Sfloat,
+          .vertexData = positionBufferAddress + sizeof(glm::vec3) * primitive.vertexOffset,
+          .vertexStride = sizeof(glm::vec3),
+          .maxVertex = primitive.vertexCount - 1,
+          .indexType = vk::IndexType::eUint32,
+          .indexData = indexBufferAddress + sizeof(uint32_t) * primitive.firstIndex,
+      };
+
+      geometries.push_back({
+          .geometryType = vk::GeometryTypeKHR::eTriangles,
+          .geometry = triangles,
+          .flags = vk::GeometryFlagBitsKHR::eOpaque,
+      });
+
+      buildRangeInfos.push_back({
+          .primitiveCount = triangleCount,
+      });
+
+      triangleCounts.push_back(triangleCount);
+    }
+
+    vk::AccelerationStructureBuildGeometryInfoKHR buildGeometryInfo{
+        .type = vk::AccelerationStructureTypeKHR::eBottomLevel,
+        .flags = vk::BuildAccelerationStructureFlagBitsKHR::ePreferFastTrace,
+        .mode = vk::BuildAccelerationStructureModeKHR::eBuild,
+        .geometryCount = static_cast<uint32_t>(geometries.size()),
+        .pGeometries = geometries.data(),
+    };
+
+    const auto buildSizesInfo = device.getAccelerationStructureBuildSizesKHR(vk::AccelerationStructureBuildTypeKHR::eDevice, buildGeometryInfo, triangleCounts);
+
+    vk::BufferCreateInfo blasBufferCreateInfo{
+        .size = buildSizesInfo.accelerationStructureSize,
+        .usage = vk::BufferUsageFlagBits::eAccelerationStructureStorageKHR | vk::BufferUsageFlagBits::eShaderDeviceAddress,
+    };
+    mesh.blasBuffer = allocator.createBuffer(blasBufferCreateInfo, allocationCreateInfo);
+
+    vk::AccelerationStructureCreateInfoKHR blasCreateInfo{
+        .buffer = *mesh.blasBuffer,
+        .size = buildSizesInfo.accelerationStructureSize,
+        .type = vk::AccelerationStructureTypeKHR::eBottomLevel,
+    };
+    mesh.blas = device.createAccelerationStructureKHR(blasCreateInfo);
+
+    vk::BufferCreateInfo scratchBufferCreateInfo{
+        .size = buildSizesInfo.buildScratchSize,
+        .usage = vk::BufferUsageFlagBits::eStorageBuffer | vk::BufferUsageFlagBits::eShaderDeviceAddress,
+    };
+    auto &scratchBuffer = scratchBuffers.emplace_back(allocator.createBufferWithAlignment(scratchBufferCreateInfo, allocationCreateInfo, scratchAlignment));
+
+    vk::BufferDeviceAddressInfo scratchBufferAddressInfo{
+        .buffer = *scratchBuffer,
+    };
+
+    buildGeometryInfo.dstAccelerationStructure = *mesh.blas;
+    buildGeometryInfo.scratchData.deviceAddress = device.getBufferAddress(scratchBufferAddressInfo);
+
+    commandBuffer.buildAccelerationStructuresKHR(buildGeometryInfo, buildRangeInfos.data());
+  }
+
+  commandBuffer.end();
+
+  vk::SubmitInfo submitInfo{
+      .commandBufferCount = 1,
+      .pCommandBuffers = &*commandBuffer,
+  };
+  auto graphicsQueue = gpu_.getGraphicsQueue();
+  graphicsQueue.submit(submitInfo);
+  graphicsQueue.waitIdle();
 }
