@@ -28,6 +28,11 @@ uint32_t Gpu::getGraphicsQueueIndex() const
   return graphicsQueueIndex_;
 }
 
+const vk::raii::Device &Gpu::getDevice() const
+{
+  return device_;
+}
+
 const vma::raii::Allocator &Gpu::getAllocator() const
 {
   return allocator_;
@@ -133,13 +138,18 @@ void Gpu::createDeviceAndQueues()
       .bufferDeviceAddress = true,
   };
 
+  vk::PhysicalDeviceVulkan14Features vulkan14Features{
+      .pNext = &vulkan12Features,
+      .hostImageCopy = true,
+  };
+
   std::array<const char *, 2> extensions{
       vk::KHRAccelerationStructureExtensionName,
       vk::KHRDeferredHostOperationsExtensionName,
   };
 
   vk::DeviceCreateInfo deviceCreateInfo{
-      .pNext = &vulkan12Features,
+      .pNext = &vulkan14Features,
       .queueCreateInfoCount = static_cast<uint32_t>(deviceQueueCreateInfos.size()),
       .pQueueCreateInfos = deviceQueueCreateInfos.data(),
       .enabledExtensionCount = extensions.size(),

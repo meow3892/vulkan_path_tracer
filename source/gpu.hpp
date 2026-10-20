@@ -12,6 +12,8 @@ public:
 
   uint32_t getGraphicsQueueIndex() const;
 
+  const vk::raii::Device &getDevice() const;
+
   const vma::raii::Allocator &getAllocator() const;
 
 private:

@@ -25,6 +25,76 @@ static vma::raii::Buffer createMaterialBuffer(const Gpu &gpu)
 
 AssetManager::AssetManager(const Gpu &gpu) : gpu_(gpu), materialBuffer_(createMaterialBuffer(gpu))
 {
+  const std::array<uint8_t, 4> white{255, 255, 255, 255};
+  const std::array<uint8_t, 4> flatNormal{128, 128, 255, 255};
+  uploadTexture2D(vk::Format::eR8G8B8A8Unorm, {1, 1}, white.data());
+  uploadTexture2D(vk::Format::eR8G8B8A8Unorm, {1, 1}, flatNormal.data());
+}
+
+void AssetManager::uploadTexture2D(vk::Format format, vk::Extent2D extent, vk::ArrayProxy<const void *const> mipLevels)
+{
+  auto &device = gpu_.getDevice();
+
+  vk::ImageCreateInfo imageCreateInfo{
+      .imageType = vk::ImageType::e2D,
+      .format = format,
+      .extent = {extent.width, extent.height, 1},
+      .mipLevels = mipLevels.size(),
+      .arrayLayers = 1,
+      .samples = vk::SampleCountFlagBits::e1,
+      .tiling = vk::ImageTiling::eOptimal,
+      .usage = vk::ImageUsageFlagBits::eSampled | vk::ImageUsageFlagBits::eHostTransfer,
+  };
+  vma::AllocationCreateInfo allocationCreateInfo{
+      .usage = vma::MemoryUsage::eAutoPreferDevice,
+  };
+  auto image = gpu_.getAllocator().createImage(imageCreateInfo, allocationCreateInfo);
+
+  vk::ImageSubresourceRange subresourceRange{
+      .aspectMask = vk::ImageAspectFlagBits::eColor,
+      .levelCount = mipLevels.size(),
+      .layerCount = 1,
+  };
+
+  vk::HostImageLayoutTransitionInfo transitionInfo{
+      .image = *image,
+      .oldLayout = vk::ImageLayout::eUndefined,
+      .newLayout = vk::ImageLayout::eShaderReadOnlyOptimal,
+      .subresourceRange = subresourceRange,
+  };
+  device.transitionImageLayout(transitionInfo);
+
+  std::vector<vk::MemoryToImageCopy> regions;
+  regions.reserve(mipLevels.size());
+  for (uint32_t level = 0; level < mipLevels.size(); ++level)
+  {
+    regions.push_back({
+        .pHostPointer = mipLevels.data()[level],
+        .imageSubresource = {.aspectMask = vk::ImageAspectFlagBits::eColor, .mipLevel = level, .layerCount = 1},
+        .imageExtent = {std::max(1u, extent.width >> level), std::max(1u, extent.height >> level), 1},
+    });
+  }
+
+  vk::CopyMemoryToImageInfo copyMemoryToImageInfo{
+      .dstImage = *image,
+      .dstImageLayout = vk::ImageLayout::eShaderReadOnlyOptimal,
+      .regionCount = static_cast<uint32_t>(regions.size()),
+      .pRegions = regions.data(),
+  };
+  device.copyMemoryToImage(copyMemoryToImageInfo);
+
+  vk::ImageViewCreateInfo imageViewCreateInfo{
+      .image = *image,
+      .viewType = vk::ImageViewType::e2D,
+      .format = format,
+      .subresourceRange = subresourceRange,
+  };
+  auto imageView = device.createImageView(imageViewCreateInfo);
+
+  texture2Ds_.push_back(Texture2D{
+      .image = std::move(image),
+      .imageView = std::move(imageView),
+  });
 }
 
 static const fastgltf::Attribute &findAttribute(const fastgltf::Primitive &primitive, std::string_view name)

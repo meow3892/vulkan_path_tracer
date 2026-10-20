@@ -45,6 +45,8 @@ private:
     vk::raii::ImageView imageView;
   };
 
+  void uploadTexture2D(vk::Format format, vk::Extent2D extent, vk::ArrayProxy<const void *const> mipLevels);
+
   const Gpu &gpu_;
   vma::raii::Buffer materialBuffer_;
   uint32_t materialCount_{0};
