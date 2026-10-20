@@ -160,12 +160,12 @@ MeshHandle AssetManager::uploadGltf(const std::filesystem::path &path)
 
   if (materialCount_ + asset->materials.size() > MAX_MATERIALS)
   {
-    throw std::runtime_error(path.string() + " material buffer is full");
+    throw std::runtime_error("Material buffer is full");
   }
 
   if (primitiveCount_ + mesh.primitives.size() > MAX_PRIMITIVES)
   {
-    throw std::runtime_error(path.string() + " primitive buffer is full");
+    throw std::runtime_error("Primitive buffer is full");
   }
 
   const uint32_t materialBase = materialCount_;
