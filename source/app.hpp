@@ -2,6 +2,7 @@
 
 #include "asset_manager.hpp"
 #include "gpu.hpp"
+#include "path_tracer.hpp"
 
 #include <SDL3/SDL_video.h>
 
@@ -13,4 +14,5 @@ struct App
   SDL_Window *window_;
   Gpu gpu_;
   AssetManager assetManager{gpu_};
+  PathTracer pathTracer{window_, gpu_};
 };

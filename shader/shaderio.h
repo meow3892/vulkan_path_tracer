@@ -33,4 +33,12 @@ struct Primitive
   uint64_t texcoordAddress;
   uint32_t materialIndex;
 };
+
+struct Camera
+{
+  float4x4 inverseViewMatrix;
+  float4x4 inverseProjectionMatrix;
+  uint32_t frameIndex;
+  uint32_t sampleCount;
+};
 } // namespace Shader

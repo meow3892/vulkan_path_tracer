@@ -36,6 +36,7 @@ PRIVATE
   "source/gpu.cpp"
   "source/vma.cpp"
   "source/asset_manager.cpp"
+  "source/path_tracer.cpp"
 )
 
 target_compile_definitions(vulkan_path_tracer
