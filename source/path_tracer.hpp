@@ -12,6 +12,9 @@ public:
 private:
   SDL_Window *window_;
   const Gpu &gpu_;
+  vk::raii::DescriptorSetLayout descriptorSetLayout_;
+  vk::raii::DescriptorPool descriptorPool_;
+  vk::DescriptorSet descriptorSet_;
   vma::raii::Buffer cameraBuffer_;
   vk::raii::Sampler hdrTargetSampler_;
   vma::raii::Image hdrTargetImage_{nullptr};
