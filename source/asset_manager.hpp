@@ -20,6 +20,10 @@ public:
 
   void buildBlases();
 
+  vk::DeviceAddress getBlasAddress(MeshHandle mesh) const;
+
+  uint32_t getFirstPrimitive(MeshHandle mesh) const;
+
 private:
   struct Primitive
   {

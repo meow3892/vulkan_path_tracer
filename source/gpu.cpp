@@ -156,8 +156,13 @@ void Gpu::createDeviceAndQueues()
       .bufferDeviceAddress = true,
   };
 
-  vk::PhysicalDeviceVulkan14Features vulkan14Features{
+  vk::PhysicalDeviceVulkan13Features vulkan13Features{
       .pNext = &vulkan12Features,
+      .synchronization2 = true,
+  };
+
+  vk::PhysicalDeviceVulkan14Features vulkan14Features{
+      .pNext = &vulkan13Features,
       .hostImageCopy = true,
   };
 

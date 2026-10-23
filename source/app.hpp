@@ -14,5 +14,5 @@ struct App
   SDL_Window *window_;
   Gpu gpu_;
   AssetManager assetManager{gpu_};
-  PathTracer pathTracer{window_, gpu_};
+  PathTracer pathTracer{window_, gpu_, assetManager};
 };

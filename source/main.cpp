@@ -18,8 +18,13 @@ SDL_AppResult SDL_AppInit(void **appstate, int argc, char **argv)
 
   try
   {
-    app->assetManager.uploadGltf("asset/cornell_box.gltf");
+    auto cornellBox = app->assetManager.uploadGltf("asset/cornell_box.gltf");
     app->assetManager.buildBlases();
+
+    std::array instances{
+        Instance{.mesh = cornellBox, .transform = glm::mat4(1.0f)},
+    };
+    app->pathTracer.buildTlas(instances);
   }
   catch (const std::exception &exception)
   {

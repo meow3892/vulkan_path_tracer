@@ -430,6 +430,25 @@ MeshHandle AssetManager::uploadGltf(const std::filesystem::path &path)
   }
 }
 
+vk::DeviceAddress AssetManager::getBlasAddress(MeshHandle mesh) const
+{
+  const auto &blas = meshes_[mesh.index].blas;
+  if (!*blas)
+  {
+    throw std::runtime_error("Mesh blas is not built");
+  }
+
+  vk::AccelerationStructureDeviceAddressInfoKHR addressInfo{
+      .accelerationStructure = *blas,
+  };
+  return gpu_.getDevice().getAccelerationStructureAddressKHR(addressInfo);
+}
+
+uint32_t AssetManager::getFirstPrimitive(MeshHandle mesh) const
+{
+  return meshes_[mesh.index].firstPrimitive;
+}
+
 void AssetManager::buildBlases()
 {
   auto &device = gpu_.getDevice();
