@@ -13,7 +13,7 @@ static constexpr vk::ColorSpaceKHR SWAPCHAIN_COLOR_SPACE = vk::ColorSpaceKHR::eS
 static constexpr vk::PresentModeKHR SWAPCHAIN_PRESENT_MODE = vk::PresentModeKHR::eMailbox;
 
 static constexpr std::array<vk::DescriptorSetLayoutBinding, 4> BINDINGS{{
-    {.binding = 0, .descriptorType = vk::DescriptorType::eStorageBuffer, .descriptorCount = 1, .stageFlags = vk::ShaderStageFlagBits::eAll},
+    {.binding = 0, .descriptorType = vk::DescriptorType::eUniformBuffer, .descriptorCount = 1, .stageFlags = vk::ShaderStageFlagBits::eAll},
     {.binding = 1, .descriptorType = vk::DescriptorType::eStorageImage, .descriptorCount = 1, .stageFlags = vk::ShaderStageFlagBits::eAll},
     {.binding = 2, .descriptorType = vk::DescriptorType::eCombinedImageSampler, .descriptorCount = 1, .stageFlags = vk::ShaderStageFlagBits::eAll},
     {.binding = 3, .descriptorType = vk::DescriptorType::eAccelerationStructureKHR, .descriptorCount = 1, .stageFlags = vk::ShaderStageFlagBits::eAll},
@@ -48,7 +48,7 @@ static vma::raii::Buffer createCameraBuffer(const Gpu &gpu)
 {
   vk::BufferCreateInfo bufferCreateInfo{
       .size = sizeof(Shader::Camera),
-      .usage = vk::BufferUsageFlagBits::eStorageBuffer,
+      .usage = vk::BufferUsageFlagBits::eUniformBuffer,
   };
 
   vma::AllocationCreateInfo allocationCreateInfo{
@@ -128,7 +128,7 @@ PathTracer::PathTracer(SDL_Window *window, const Gpu &gpu, const AssetManager &a
       .dstSet = descriptorSet_,
       .dstBinding = 0,
       .descriptorCount = 1,
-      .descriptorType = vk::DescriptorType::eStorageBuffer,
+      .descriptorType = vk::DescriptorType::eUniformBuffer,
       .pBufferInfo = &cameraBufferInfo,
   };
   gpu.getDevice().updateDescriptorSets(write, nullptr);

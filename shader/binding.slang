@@ -9,7 +9,7 @@ struct Asset
 
 struct PathTracing
 {
-  StructuredBuffer<Shader::Camera> camera;
+  ConstantBuffer<Shader::Camera> camera;
   RWTexture2D<float4> hdrTargetStorage;
   Sampler2D<float4> hdrTargetSampled;
   RaytracingAccelerationStructure tlas;
