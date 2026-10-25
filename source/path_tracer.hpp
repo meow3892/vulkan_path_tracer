@@ -31,11 +31,15 @@ private:
   vk::raii::Sampler hdrTargetSampler_;
   vma::raii::Image hdrTargetImage_{nullptr};
   vk::raii::ImageView hdrTargetImageView_{nullptr};
+  vk::raii::SwapchainKHR swapchain_{nullptr};
+  std::vector<vk::Image> swapchainImages_;
+  std::vector<vk::raii::ImageView> swapchainImageViews_;
   vma::raii::Buffer instanceBuffer_;
   vma::raii::Buffer tlasBuffer_{nullptr};
   vk::raii::AccelerationStructureKHR tlas_{nullptr};
   vma::raii::Buffer tlasScratchBuffer_{nullptr};
 
+  void createSwapchain();
   void createHdrTarget();
   void createTlas();
 };

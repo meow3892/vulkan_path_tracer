@@ -8,6 +8,10 @@ static constexpr uint32_t MAX_INSTANCES = 1024;
 
 static constexpr vk::Format HDR_TARGET_FORMAT = vk::Format::eR32G32B32A32Sfloat;
 
+static constexpr vk::Format SWAPCHAIN_FORMAT = vk::Format::eB8G8R8A8Srgb;
+static constexpr vk::ColorSpaceKHR SWAPCHAIN_COLOR_SPACE = vk::ColorSpaceKHR::eSrgbNonlinear;
+static constexpr vk::PresentModeKHR SWAPCHAIN_PRESENT_MODE = vk::PresentModeKHR::eMailbox;
+
 static constexpr std::array<vk::DescriptorSetLayoutBinding, 4> BINDINGS{{
     {.binding = 0, .descriptorType = vk::DescriptorType::eStorageBuffer, .descriptorCount = 1, .stageFlags = vk::ShaderStageFlagBits::eAll},
     {.binding = 1, .descriptorType = vk::DescriptorType::eStorageImage, .descriptorCount = 1, .stageFlags = vk::ShaderStageFlagBits::eAll},
@@ -129,8 +133,42 @@ PathTracer::PathTracer(SDL_Window *window, const Gpu &gpu, const AssetManager &a
   };
   gpu.getDevice().updateDescriptorSets(write, nullptr);
 
+  createSwapchain();
   createHdrTarget();
   createTlas();
+}
+
+void PathTracer::createSwapchain()
+{
+  auto &device = gpu_.getDevice();
+  const auto surfaceCapabilities = gpu_.getPhysicalDevice().getSurfaceCapabilitiesKHR(gpu_.getSurface());
+
+  vk::SwapchainCreateInfoKHR swapchainCreateInfo{
+      .surface = gpu_.getSurface(),
+      .minImageCount = surfaceCapabilities.minImageCount + 1,
+      .imageFormat = SWAPCHAIN_FORMAT,
+      .imageColorSpace = SWAPCHAIN_COLOR_SPACE,
+      .imageExtent = surfaceCapabilities.currentExtent,
+      .imageArrayLayers = 1,
+      .imageUsage = vk::ImageUsageFlagBits::eColorAttachment,
+      .preTransform = surfaceCapabilities.currentTransform,
+      .compositeAlpha = vk::CompositeAlphaFlagBitsKHR::eOpaque,
+      .presentMode = SWAPCHAIN_PRESENT_MODE,
+      .clipped = true,
+  };
+  swapchain_ = device.createSwapchainKHR(swapchainCreateInfo);
+  swapchainImages_ = swapchain_.getImages();
+
+  for (const auto image : swapchainImages_)
+  {
+    vk::ImageViewCreateInfo imageViewCreateInfo{
+        .image = image,
+        .viewType = vk::ImageViewType::e2D,
+        .format = SWAPCHAIN_FORMAT,
+        .subresourceRange = {.aspectMask = vk::ImageAspectFlagBits::eColor, .levelCount = 1, .layerCount = 1},
+    };
+    swapchainImageViews_.push_back(device.createImageView(imageViewCreateInfo));
+  }
 }
 
 void PathTracer::createHdrTarget()

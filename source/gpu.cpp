@@ -182,9 +182,10 @@ void Gpu::createDeviceAndQueues()
       .hostImageCopy = true,
   };
 
-  std::array<const char *, 2> extensions{
+  std::array<const char *, 3> extensions{
       vk::KHRAccelerationStructureExtensionName,
       vk::KHRDeferredHostOperationsExtensionName,
+      vk::KHRSwapchainExtensionName,
   };
 
   vk::DeviceCreateInfo deviceCreateInfo{
