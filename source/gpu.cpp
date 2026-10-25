@@ -10,9 +10,10 @@ constexpr bool ENABLE_VALIDATION_LAYERS = false;
 constexpr bool ENABLE_VALIDATION_LAYERS = true;
 #endif
 
-Gpu::Gpu()
+Gpu::Gpu(SDL_Window *window)
 {
   createInstance();
+  createSurface(window);
   selectPhysicalDevice();
   createDeviceAndQueues();
   createAllocator();
@@ -47,6 +48,11 @@ const vma::raii::Allocator &Gpu::getAllocator() const
 vk::PhysicalDeviceAccelerationStructurePropertiesKHR Gpu::getAccelerationStructureProperties() const
 {
   return accelerationStructureProperties_;
+}
+
+vk::SurfaceKHR Gpu::getSurface() const
+{
+  return *surface_;
 }
 
 void Gpu::createInstance()
@@ -100,6 +106,16 @@ void Gpu::createInstance()
   instance_ = context_.createInstance(instanceCreateInfo);
 }
 
+void Gpu::createSurface(SDL_Window *window)
+{
+  VkSurfaceKHR surface;
+  if (!SDL_Vulkan_CreateSurface(window, *instance_, nullptr, &surface))
+  {
+    throw std::runtime_error(std::string("SDL create surface failed: ") + SDL_GetError());
+  }
+  surface_ = vk::raii::SurfaceKHR(instance_, surface);
+}
+
 void Gpu::selectPhysicalDevice()
 {
   const auto physicalDevices = instance_.enumeratePhysicalDevices();
@@ -125,7 +141,7 @@ void Gpu::createDeviceAndQueues()
   const auto queueFamilyProperties = physicalDevice_.getQueueFamilyProperties();
   for (uint32_t i = 0; i < queueFamilyProperties.size(); ++i)
   {
-    if ((queueFamilyProperties[i].queueFlags & vk::QueueFlagBits::eGraphics))
+    if ((queueFamilyProperties[i].queueFlags & vk::QueueFlagBits::eGraphics) && physicalDevice_.getSurfaceSupportKHR(i, *surface_))
     {
       graphicsQueueIndex_ = i;
       break;
@@ -133,7 +149,7 @@ void Gpu::createDeviceAndQueues()
   }
   if (graphicsQueueIndex_ == ~0u)
   {
-    throw std::runtime_error("Failed to find graphics queue");
+    throw std::runtime_error("Failed to find graphics queue with present support");
   }
 
   float queuePriority = 1.0f;
