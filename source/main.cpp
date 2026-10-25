@@ -8,16 +8,16 @@
 
 SDL_AppResult SDL_AppInit(void **appstate, int argc, char **argv)
 {
-  if (!SDL_Init(SDL_INIT_VIDEO))
-  {
-    std::cerr << "SDL init failed: " << SDL_GetError() << '\n';
-  }
-
-  *appstate = new App();
-  auto app = static_cast<App *>(*appstate);
-
   try
   {
+    if (!SDL_Init(SDL_INIT_VIDEO))
+    {
+      throw std::runtime_error(std::string("SDL init failed: ") + SDL_GetError());
+    }
+
+    *appstate = new App();
+    auto app = static_cast<App *>(*appstate);
+
     auto cornellBox = app->assetManager.uploadGltf("asset/cornell_box.gltf");
     app->assetManager.buildBlases();
 
