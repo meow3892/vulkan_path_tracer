@@ -161,7 +161,19 @@ void Gpu::createDeviceAndQueues()
       },
   };
 
+  vk::PhysicalDeviceFeatures2 physicalDeviceFeatures{
+      .features = {
+          .shaderInt64 = true,
+      },
+  };
+
+  vk::PhysicalDeviceRayQueryFeaturesKHR rayQueryFeatures{
+      .pNext = &physicalDeviceFeatures,
+      .rayQuery = true,
+  };
+
   vk::PhysicalDeviceAccelerationStructureFeaturesKHR accelerationStructureFeatures{
+      .pNext = &rayQueryFeatures,
       .accelerationStructure = true,
   };
 
@@ -169,22 +181,27 @@ void Gpu::createDeviceAndQueues()
       .pNext = &accelerationStructureFeatures,
       .descriptorBindingSampledImageUpdateAfterBind = true,
       .descriptorBindingPartiallyBound = true,
+      .runtimeDescriptorArray = true,
+      .scalarBlockLayout = true,
       .bufferDeviceAddress = true,
   };
 
   vk::PhysicalDeviceVulkan13Features vulkan13Features{
       .pNext = &vulkan12Features,
       .synchronization2 = true,
+      .dynamicRendering = true,
   };
 
   vk::PhysicalDeviceVulkan14Features vulkan14Features{
       .pNext = &vulkan13Features,
+      .maintenance5 = true,
       .hostImageCopy = true,
   };
 
-  std::array<const char *, 3> extensions{
+  std::array<const char *, 4> extensions{
       vk::KHRAccelerationStructureExtensionName,
       vk::KHRDeferredHostOperationsExtensionName,
+      vk::KHRRayQueryExtensionName,
       vk::KHRSwapchainExtensionName,
   };
 

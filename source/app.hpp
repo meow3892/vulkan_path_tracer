@@ -15,4 +15,5 @@ struct App
   Gpu gpu_{window_};
   AssetManager assetManager{gpu_};
   PathTracer pathTracer{window_, gpu_, assetManager};
+  bool minimized = false;
 };

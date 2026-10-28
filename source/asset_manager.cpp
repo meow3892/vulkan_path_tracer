@@ -449,6 +449,16 @@ uint32_t AssetManager::getFirstPrimitive(MeshHandle mesh) const
   return meshes_[mesh.index].firstPrimitive;
 }
 
+vk::DescriptorSetLayout AssetManager::getDescriptorSetLayout() const
+{
+  return *descriptorSetLayout_;
+}
+
+vk::DescriptorSet AssetManager::getDescriptorSet() const
+{
+  return descriptorSet_;
+}
+
 void AssetManager::buildBlases()
 {
   auto &device = gpu_.getDevice();

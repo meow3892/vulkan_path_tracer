@@ -39,6 +39,6 @@ struct Camera
   float4x4 inverseViewMatrix;
   float4x4 inverseProjectionMatrix;
   uint32_t frameIndex;
-  uint32_t sampleCount;
+  uint32_t bounceCount;
 };
 } // namespace Shader

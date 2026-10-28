@@ -24,6 +24,10 @@ public:
 
   uint32_t getFirstPrimitive(MeshHandle mesh) const;
 
+  vk::DescriptorSetLayout getDescriptorSetLayout() const;
+
+  vk::DescriptorSet getDescriptorSet() const;
+
 private:
   struct Primitive
   {

@@ -43,3 +43,38 @@ target_compile_definitions(vulkan_path_tracer
 PRIVATE
   VULKAN_HPP_NO_STRUCT_CONSTRUCTORS
 )
+
+find_program(SLANGC slangc REQUIRED)
+
+set(SHADER_OUTPUT_DIRECTORY ${CMAKE_RUNTIME_OUTPUT_DIRECTORY}/shader)
+file(MAKE_DIRECTORY ${SHADER_OUTPUT_DIRECTORY})
+
+add_custom_command(
+  OUTPUT ${SHADER_OUTPUT_DIRECTORY}/path_tracing.spv
+  COMMAND ${SLANGC} ${CMAKE_SOURCE_DIR}/shader/path_tracing.slang
+    -target spirv
+    -fvk-use-scalar-layout
+    -o ${SHADER_OUTPUT_DIRECTORY}/path_tracing.spv
+    -depfile ${CMAKE_CURRENT_BINARY_DIR}/path_tracing.d
+  DEPENDS shader/path_tracing.slang
+  DEPFILE ${CMAKE_CURRENT_BINARY_DIR}/path_tracing.d
+)
+
+add_custom_command(
+  OUTPUT ${SHADER_OUTPUT_DIRECTORY}/tonemapping_pbr_neutral.spv
+  COMMAND ${SLANGC} ${CMAKE_SOURCE_DIR}/shader/tonemapping_pbr_neutral.slang
+    -target spirv
+    -fvk-use-scalar-layout
+    -fvk-use-entrypoint-name
+    -o ${SHADER_OUTPUT_DIRECTORY}/tonemapping_pbr_neutral.spv
+    -depfile ${CMAKE_CURRENT_BINARY_DIR}/tonemapping_pbr_neutral.d
+  DEPENDS shader/tonemapping_pbr_neutral.slang
+  DEPFILE ${CMAKE_CURRENT_BINARY_DIR}/tonemapping_pbr_neutral.d
+)
+
+add_custom_target(shaders
+  DEPENDS
+    ${SHADER_OUTPUT_DIRECTORY}/path_tracing.spv
+    ${SHADER_OUTPUT_DIRECTORY}/tonemapping_pbr_neutral.spv
+)
+add_dependencies(vulkan_path_tracer shaders)
