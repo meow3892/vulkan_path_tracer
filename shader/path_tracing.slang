@@ -9,6 +9,7 @@ static const float RAY_EPSILON = 0.001;
 static const float RAY_TMAX = 1e30;
 static const float FIREFLY_CLAMP = 100.0;
 
+// from Jarzynski and Olano 2020, "Hash Functions for GPU Rendering"
 uint32_t3 pcg3d(uint32_t3 v)
 {
   v = v * 1664525u + 1013904223u;
@@ -51,6 +52,7 @@ float3 schlickFresnel(float3 v, float3 h, float3 F0)
   return F0 + (1.0 - F0) * pow(1.0 - vdoth, 5.0);
 }
 
+// from Hammon 2017, "PBR Diffuse Lighting for GGX+Smith Microsurfaces"
 float3 hammonDiffuse(float3 n, float3 v, float3 l, float alpha, float3 albedo)
 {
   float3 h = normalize(v + l);
@@ -66,6 +68,7 @@ float3 hammonDiffuse(float3 n, float3 v, float3 l, float alpha, float3 albedo)
   return diffuse;
 }
 
+// from Heitz 2018, "Sampling the GGX Distribution of Visible Normals"
 float3 sampleGGXVNDF(float3 Ve, float alphaX, float alphaY, float u1, float u2)
 {
   float3 Vh = normalize(float3(alphaX * Ve.x, alphaY * Ve.y, Ve.z));

@@ -3,6 +3,9 @@
 ParameterBlock<Asset> asset;
 ParameterBlock<PathTracing> pathTracing;
 
+// Copyright 2024 The Khronos Group, Inc.
+// ported from github.com/KhronosGroup/ToneMapping under Apache 2.0
+
 float3 PBRNeutralToneMapping(float3 color)
 {
   const float startCompression = 0.8 - 0.04;
